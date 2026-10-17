@@ -27,10 +27,13 @@ document.addEventListener('mouseup', () => {
     timer = setTimeout(() => {
         const selectedText = window.getSelection().toString().trim();
         if (selectedText.length > 0) {
+            // 【核心修复】单向发送消息，不传回调函数，避免等待 response
             chrome.runtime.sendMessage({
                 type: "USER_SELECTED_TEXT",
                 text: selectedText
+            }).catch(() => {
+                // 忽略侧边栏未打开时的正常断连提示
             });
         }
-    }, 300); // 用户停止选词 300ms 后才发送
+    }, 200); // 用户停止选词 200ms 后才发送
 });

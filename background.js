@@ -25,12 +25,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // 【核心改进】异步主动查询当前是否有激活的侧边栏上下文
         if (!sidePanelPort) {
             sendResponse({ ok: false, reason: "side_panel_closed" });
-            return; 
+            return false; 
         }
 
         const selectedText = message.text;
-        callDeepSeekAgent(selectedText);
+        // 2. 【核心修复】第一时间回应 content.js，告诉它“后台已收到”，解除通道阻塞！
         sendResponse({ ok: true });
+        // 3. 异步去调用 DeepSeek，即使后面报错或耗时较长，也不会卡死通信通道
+        callDeepSeekAgent(selectedText);     
+        return false; // 通道已经响应完毕，不需要保持异步等待   
     }
     return true; // 保持异步通道开启
 });
