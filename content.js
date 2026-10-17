@@ -8,7 +8,7 @@ document.addEventListener('mouseup', () => {
 
         // The service worker stores the selection so it is available when the panel opens.
         chrome.runtime.sendMessage({
-            type: "SEND_TEXT_TO_RUST",
+            type: "USER_SELECTED_TEXT",
             text: selectedText
         }).then((response) => {
             if (!response?.ok) {
@@ -18,4 +18,19 @@ document.addEventListener('mouseup', () => {
             console.error("发送选中文字失败:", error);
         });
     }
+});
+
+
+let timer = null;
+document.addEventListener('mouseup', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+        const selectedText = window.getSelection().toString().trim();
+        if (selectedText.length > 0) {
+            chrome.runtime.sendMessage({
+                type: "USER_SELECTED_TEXT",
+                text: selectedText
+            });
+        }
+    }, 300); // 用户停止选词 300ms 后才发送
 });

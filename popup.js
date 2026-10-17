@@ -23,18 +23,19 @@ function playAudio(text) {
     window.speechSynthesis.speak(utterance);
     console.log("正在朗读:", text);
 }
+// 1. 在侧边栏页面加载时立刻与后台建立长连接（用于后台判定侧边栏开闭状态）
+chrome.runtime.connect({ name: "side-panel-conn" });
 
 async function main() {
     const textElement = document.getElementById('output');
 
     // 核心：使用事件委托（Event Delegation），监听整个侧边栏容器内对朗读按钮的点击
-    textElement.addEventListener('click', (event) => {
-        const btn = event.target.closest('.speak-btn');
-        if (btn) {
-            const textToSpeak = btn.getAttribute('data-text');
-            playAudio(textToSpeak);
-        }
-    });
+    if (textElement) {
+        textElement.addEventListener('click', (event) => {
+            const btn = event.target.closest('.speak-btn');
+            if (btn) playAudio(btn.getAttribute('data-text'));
+        });
+    }
 
     // 打开侧边栏时加载缓存的翻译结果
     chrome.storage.local.get(['lastTranslationResult'], (data) => {

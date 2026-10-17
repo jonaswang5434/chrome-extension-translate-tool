@@ -2,17 +2,35 @@
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
   .catch((error) => console.error(error));
 
-const DEEPSEEK_API_KEY = "xxxxxxxxxxxx";
+const DEEPSEEK_API_KEY = "";
+
+let sidePanelPort = null; // 记录侧边栏的长连接通道
+// 1. 监听侧边栏与后台建立长连接
+chrome.runtime.onConnect.addListener((port) => {
+    if (port.name === "side-panel-conn") {
+        sidePanelPort = port;
+        console.log("侧边栏已连接（开启）");
+
+        // 当侧边栏被关闭时，这个监听器会瞬间触发
+        port.onDisconnect.addListener(() => {
+            sidePanelPort = null;
+            console.log("侧边栏已断开（关闭）");
+        });
+    }
+});
 
 // 监听来自网页 (content.js) 的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === "SEND_TEXT_TO_RUST") {
+
+    if (message.type === "USER_SELECTED_TEXT") {
+        // 【核心改进】异步主动查询当前是否有激活的侧边栏上下文
+        if (!sidePanelPort) {
+            sendResponse({ ok: false, reason: "side_panel_closed" });
+            return; 
+        }
+
         const selectedText = message.text;
-        console.log("后台成功收到划词:", selectedText);
-
-        // 调用 DeepSeek 翻译并缓存
         callDeepSeekAgent(selectedText);
-
         sendResponse({ ok: true });
     }
     return true; // 保持异步通道开启
