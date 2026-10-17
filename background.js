@@ -2,7 +2,6 @@
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
   .catch((error) => console.error(error));
 
-const DEEPSEEK_API_KEY = "";
 
 let sidePanelPort = null; // 记录侧边栏的长连接通道
 // 1. 监听侧边栏与后台建立长连接
@@ -36,8 +35,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // 保持异步通道开启
 });
 
+function getStoredApiKey() {
+    return new Promise((resolve) => {
+        chrome.storage.sync.get(['deepseek_api_key'], (result) => {
+            resolve(result.deepseek_api_key || "");
+        });
+    });
+}
 
 async function callDeepSeekAgent(userInput) {
+    const apiKey = await getStoredApiKey();
+    if (!apiKey) {
+        console.error("未设置 DeepSeek API Key，请先在插件选项页配置。");
+        return;
+    }
     try {
         const isSingleWord = !userInput.trim().includes(' ') && userInput.trim().length < 30;
 
@@ -73,7 +84,7 @@ e.g. [英文例句] - [中文翻译]`;
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
+                "Authorization": `Bearer ${apiKey}`
             },
             body: JSON.stringify({
                 model: "deepseek-chat",

@@ -23,6 +23,7 @@
       "js": ["content.js"]
     }
   ],
+  "options_page": "options.html",
   "web_accessible_resources": [
     {
       "resources": [
