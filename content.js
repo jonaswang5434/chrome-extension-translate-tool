@@ -7,8 +7,8 @@ document.addEventListener('mouseup', () => {
 
     // 200ms 防抖：避免用户快速拖选时频繁触发
     timer = setTimeout(() => {
-        // 1. 上下文安全检查：如果插件被刷新，静默退出
-        if (!chrome.runtime?.id) {
+        // 1. 【严密防范】如果 chrome、chrome.runtime 或 sendMessage 方法不存在，说明扩展上下文已被销毁，静默退出
+        if (typeof chrome === 'undefined' || !chrome.runtime || typeof chrome.runtime.sendMessage !== 'function') {
             return;
         }
 
@@ -16,15 +16,19 @@ document.addEventListener('mouseup', () => {
 
         if (selectedText && selectedText.length > 0) {
             try {
-                // 2. 单向通知后台，不做 Promise / Response 回调处理，彻底消除 console 报错
-                chrome.runtime.sendMessage({
+                // 2. 双重 Try-Catch 机制，兜底极罕见的突发断连
+                const sendMessagePromise = chrome.runtime.sendMessage({
                     type: "USER_SELECTED_TEXT",
                     text: selectedText
-                }).catch(() => {
-                    // 彻底静默：侧边栏未打开或断连时均不弹报错
                 });
+
+                if (sendMessagePromise && typeof sendMessagePromise.catch === 'function') {
+                    sendMessagePromise.catch(() => {
+                        // 静默处理侧边栏关闭时的正常断开
+                    });
+                }
             } catch (e) {
-                // 捕获 Extension context invalidated 等异常
+                // 静默捕获 Extension context invalidated 等任何上下文失效异常
             }
         }
     }, 200);
