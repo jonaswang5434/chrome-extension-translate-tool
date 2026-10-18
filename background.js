@@ -2,8 +2,6 @@
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
   .catch((error) => console.error(error));
 
-
-let sidePanelPort = null; // 记录侧边栏的长连接通道
 // 1. 监听侧边栏与后台建立长连接
 chrome.runtime.onConnect.addListener((port) => {
     if (port.name === "side-panel-conn") {
@@ -18,24 +16,31 @@ chrome.runtime.onConnect.addListener((port) => {
     }
 });
 
-// 监听来自网页 (content.js) 的消息
+// 监听来自网页 (content.js) 的划词消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-
     if (message.type === "USER_SELECTED_TEXT") {
-        // 【核心改进】异步主动查询当前是否有激活的侧边栏上下文
-        if (!sidePanelPort) {
-            sendResponse({ ok: false, reason: "side_panel_closed" });
-            return false; 
-        }
+        
+        // 【核心大招】每次划词时，实时问浏览器：“现在到底有没有打开侧边栏？”
+        // 这样无论 Service Worker 睡了多久、醒来几回，都能精准查到，绝不会假死！
+        chrome.runtime.getContexts({
+            contextTypes: ['SIDE_PANEL']
+        }).then(contexts => {
+            // 如果 contexts 数组为空，说明侧边栏没开，直接安全拦截（0 Token 消耗）
+            if (!contexts || contexts.length === 0) {
+                return;
+            }
 
-        const selectedText = message.text;
-        // 2. 【核心修复】第一时间回应 content.js，告诉它“后台已收到”，解除通道阻塞！
+            // 侧边栏确实开着，才执行 DeepSeek AI 分析
+            const selectedText = message.text;
+            console.log("侧边栏处于开启状态，成功处理划词:", selectedText);
+            callDeepSeekAgent(selectedText);
+        }).catch(() => {
+            // 容错处理
+        });
+
         sendResponse({ ok: true });
-        // 3. 异步去调用 DeepSeek，即使后面报错或耗时较长，也不会卡死通信通道
-        callDeepSeekAgent(selectedText);     
-        return false; // 通道已经响应完毕，不需要保持异步等待   
     }
-    return true; // 保持异步通道开启
+    return true; // 保持异步消息通道开启
 });
 
 function getStoredApiKey() {
