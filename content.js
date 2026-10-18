@@ -1,39 +1,31 @@
-// 监听网页上的鼠标松开事件（适合处理划词或点击选中）
-document.addEventListener('mouseup', () => {
-    const selectedText = window.getSelection()?.toString().trim();
-
-    // 如果选中了内容
-    if (selectedText) {
-        console.log("捕获到网页文字:", selectedText);
-
-        // The service worker stores the selection so it is available when the panel opens.
-        chrome.runtime.sendMessage({
-            type: "USER_SELECTED_TEXT",
-            text: selectedText
-        }).then((response) => {
-            if (!response?.ok) {
-                console.error("无法保存网页选中文字:", response?.error);
-            }
-        }).catch((error) => {
-            console.error("发送选中文字失败:", error);
-        });
-    }
-});
-
+// content.js - 划词监听脚本
 
 let timer = null;
+
 document.addEventListener('mouseup', () => {
     clearTimeout(timer);
+
+    // 200ms 防抖：避免用户快速拖选时频繁触发
     timer = setTimeout(() => {
-        const selectedText = window.getSelection().toString().trim();
-        if (selectedText.length > 0) {
-            // 【核心修复】单向发送消息，不传回调函数，避免等待 response
-            chrome.runtime.sendMessage({
-                type: "USER_SELECTED_TEXT",
-                text: selectedText
-            }).catch(() => {
-                // 忽略侧边栏未打开时的正常断连提示
-            });
+        // 1. 上下文安全检查：如果插件被刷新，静默退出
+        if (!chrome.runtime?.id) {
+            return;
         }
-    }, 200); // 用户停止选词 200ms 后才发送
+
+        const selectedText = window.getSelection()?.toString().trim();
+
+        if (selectedText && selectedText.length > 0) {
+            try {
+                // 2. 单向通知后台，不做 Promise / Response 回调处理，彻底消除 console 报错
+                chrome.runtime.sendMessage({
+                    type: "USER_SELECTED_TEXT",
+                    text: selectedText
+                }).catch(() => {
+                    // 彻底静默：侧边栏未打开或断连时均不弹报错
+                });
+            } catch (e) {
+                // 捕获 Extension context invalidated 等异常
+            }
+        }
+    }, 200);
 });
