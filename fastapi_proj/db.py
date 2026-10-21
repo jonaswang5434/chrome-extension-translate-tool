@@ -1,7 +1,9 @@
 from datetime import datetime
 import os
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import BigInteger, DateTime, Identity, String, Text, func
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -34,6 +36,8 @@ class EnglishVocabulary(Base):
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
+
+load_dotenv(Path(__file__).with_name(".env"))
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:

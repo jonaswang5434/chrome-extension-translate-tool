@@ -28,6 +28,9 @@ chrome.runtime.connect({ name: "side-panel-conn" });
 
 async function main() {
     const textElement = document.getElementById('output');
+    const queryForm = document.getElementById('vocabulary-query-form');
+    const startDateInput = document.getElementById('vocabulary-start-date');
+    const queryResults = document.getElementById('vocabulary-query-results');
 
     // 核心：使用事件委托（Event Delegation），监听整个侧边栏容器内对朗读按钮的点击
     if (textElement) {
@@ -36,6 +39,56 @@ async function main() {
             if (btn) playAudio(btn.getAttribute('data-text'));
         });
     }
+
+    queryForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        queryResults.textContent = "Loading vocabulary...";
+
+        const create_date = new Date(`${startDateInput.value}T00:00:00`).toISOString();
+        const queryUrl = new URL("http://127.0.0.1:8000/vocabulary");
+        queryUrl.searchParams.set("create_date", create_date);
+
+        try {
+            const response = await fetch(queryUrl);
+            if (!response.ok) {
+                throw new Error(`API request failed: HTTP ${response.status}`);
+            }
+
+            const entries = await response.json();
+            if (!Array.isArray(entries)) {
+                throw new Error("The API returned an invalid response.");
+            }
+
+            queryResults.replaceChildren();
+            if (entries.length === 0) {
+                queryResults.textContent = "No vocabulary found from this date.";
+                return;
+            }
+
+            for (const entry of entries) {
+                const card = document.createElement('article');
+                card.style.cssText = "padding: 8px; margin-bottom: 8px; border: 1px solid #e2e8f0; border-radius: 6px;";
+
+                const word = document.createElement('strong');
+                word.textContent = entry.vocabulary;
+                card.append(word);
+
+                const createdAt = document.createElement('small');
+                createdAt.textContent = ` — ${new Date(entry.create_date).toLocaleString()}`;
+                card.append(createdAt);
+
+                const explanation = document.createElement('p');
+                explanation.textContent = entry.explanation || "No explanation saved.";
+                explanation.style.cssText = "margin: 6px 0 0; white-space: pre-wrap;";
+                card.append(explanation);
+
+                queryResults.append(card);
+            }
+        } catch (error) {
+            console.error("Vocabulary query failed:", error);
+            queryResults.textContent = `Could not load vocabulary: ${error.message}`;
+        }
+    });
 
     // 打开侧边栏时加载缓存的翻译结果
     chrome.storage.local.get(['lastTranslationResult'], (data) => {

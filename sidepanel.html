@@ -5,8 +5,19 @@
     <title>Translate-Tool</title>
 </head>
 <body>
+    <section style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
+        <form id="vocabulary-query-form">
+            <label for="vocabulary-start-date" style="display: block; margin-bottom: 6px; font-weight: 600;">
+                Query vocabulary from start date
+            </label>
+            <div style="display: flex; gap: 8px;">
+                <input id="vocabulary-start-date" type="date" required style="flex: 1; min-width: 0;">
+                <button type="submit">Search</button>
+            </div>
+        </form>
+        <div id="vocabulary-query-results" aria-live="polite" style="margin-top: 10px;"></div>
+    </section>
     <div id="output" style="padding: 20px; cursor: pointer;">Loading...</div>
-    <!-- 确保这里引入的是你实际有的 popup.js -->
     <script type="module" src="popup.js"></script>
 </body>
 </html>

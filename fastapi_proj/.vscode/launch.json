@@ -6,12 +6,10 @@
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
-      "args": ["main:app", "--host", "127.0.0.1", "--port", "8001"],
+      "args": ["main:app", "--host", "127.0.0.1", "--port", "8000"],
       "python": "${command:python.interpreterPath}",
       "cwd": "${workspaceFolder}",
-      "env": {
-        "PGPASSWORD": "${env:PGPASSWORD}"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "justMyCode": true
     }
   ]

@@ -45,12 +45,20 @@ async def query_vocabulary(
             status_code=422,
             detail="Provide at least one of 'vocabulary' or 'create_date'.",
         )
+    if create_date is not None and (
+        create_date.tzinfo is None or create_date.utcoffset() is None
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="'create_date' must include a timezone, such as a trailing 'Z'.",
+        )
 
     statement = select(EnglishVocabulary)
     if vocabulary is not None:
         statement = statement.where(EnglishVocabulary.vocabulary == vocabulary)
     if create_date is not None:
-        statement = statement.where(EnglishVocabulary.create_date == create_date)
+        statement = statement.where(EnglishVocabulary.create_date >= create_date)
+    statement = statement.order_by(EnglishVocabulary.create_date.desc())
 
     result = await session.scalars(statement)
     return [

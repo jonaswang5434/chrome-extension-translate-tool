@@ -23,11 +23,15 @@ CREATE TABLE english_vocabulary (
 
 Configure the connection with environment variables. The host defaults to
 `127.0.0.1`, port to `5432`, database to `postgres`, and username to
-`postgres`. Set the password in your shell rather than saving it in source:
+`postgres`. Create a `.env` file in the project root with:
 
-```sh
-export PGPASSWORD='<your-postgres-password>'
+```dotenv
+PGPASSWORD=your_actual_postgres_password
 ```
+
+The application loads this file automatically, and the VS Code launch
+configuration loads it when debugging. Do not commit `.env`; it is excluded by
+the repository's `.gitignore`.
 
 Override the defaults with `PGHOST`, `PGPORT`, `PGDATABASE`, or `PGUSER` if
 your PostgreSQL setup uses different values.
@@ -67,17 +71,20 @@ The API responds with HTTP `201` and the inserted row, including its generated
 ## Query vocabulary entries
 
 Use `GET /vocabulary` with at least one query parameter. `vocabulary` is an
-exact match; `create_date` is an exact timestamp match in ISO 8601 format. If
-both parameters are provided, results must match both:
+exact match; `create_date` returns entries created at or after the supplied
+ISO 8601 timestamp. Timestamps must include a timezone (for example, a
+trailing `Z`). If multiple parameters are provided, all filters must match:
 
 ```text
 GET /vocabulary?vocabulary=serendipity
-GET /vocabulary?create_date=2026-10-21T12:00:00Z
-GET /vocabulary?vocabulary=serendipity&create_date=2026-10-21T12:00:00Z
+GET /vocabulary?create_date=2026-10-13T16:00:00Z
+GET /vocabulary?vocabulary=serendipity&create_date=2026-10-13T16:00:00Z
 ```
 
-The endpoint returns a list of matching entries. Omitting both parameters
-returns HTTP `422`.
+The endpoint returns matching entries, newest first. Omitting all query
+parameters returns HTTP `422`. In the side panel, choosing a start date lists
+all vocabulary entries from local midnight on that date onward; the browser
+converts local midnight to a timezone-aware UTC timestamp for the request.
 
 ## Extension lookup and save flow
 
