@@ -1,3 +1,6 @@
 fastapi_proj/.venv
 fastapi_proj/*.log
 fastapi_proj/*.pid
+*.pyc
+*.pyo
+*.pyd
