@@ -10,7 +10,8 @@
   ],
   "host_permissions": [
     "https://api.deepseek.com/*",
-    "http://127.0.0.1:8000/*"
+    "http://127.0.0.1:8000/*",
+    "https://api.dictionaryapi.dev/*"
   ],
   "action": {
     "default_title": "Open translate tool when click icon."
