@@ -8,6 +8,10 @@
     "scripting",
     "storage"
   ],
+  "host_permissions": [
+    "https://api.deepseek.com/*",
+    "http://127.0.0.1:8000/*"
+  ],
   "action": {
     "default_title": "Open translate tool when click icon."
   },
@@ -24,16 +28,6 @@
     }
   ],
   "options_page": "options.html",
-  "web_accessible_resources": [
-    {
-      "resources": [
-        // "pkg/rust_extension_bg.wasm"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }

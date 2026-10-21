@@ -51,14 +51,68 @@ function getStoredApiKey() {
     });
 }
 
+function escapeHtml(value) {
+    return value.replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+    })[character]);
+}
+
+function publishCachedVocabulary(vocabulary, explanation) {
+    const safeVocabulary = escapeHtml(vocabulary);
+    const safeExplanation = escapeHtml(explanation || "该词条尚无已保存的解释。");
+    const htmlContent = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #2d3748; padding: 12px;">
+            <div style="font-size: 11px; color: #718096; margin-bottom: 4px;">原文</div>
+            <div style="font-size: 16px; font-weight: 700; color: #1a202c; margin-bottom: 10px;">${safeVocabulary}</div>
+            <div style="padding: 10px 12px; background: #ebf8ff; border-left: 4px solid #3182ce; border-radius: 0 8px 8px 0; white-space: pre-wrap;">${safeExplanation}</div>
+        </div>
+    `;
+
+    chrome.storage.local.set({ lastTranslationResult: htmlContent });
+    chrome.runtime.sendMessage({
+        type: "TRANSLATION_READY",
+        resultHtml: htmlContent
+    }).catch(() => {});
+}
+
 async function callDeepSeekAgent(userInput) {
+    if (userInput.trim().length > 300) {
+        console.warn("划词内容超过 300 个字符，已忽略。");
+        return;
+    }
+
+    try {
+        const queryUrl = new URL("http://127.0.0.1:8000/vocabulary");
+        queryUrl.searchParams.set("vocabulary", userInput);
+        const vocabularyResponse = await fetch(queryUrl);
+        if (!vocabularyResponse.ok) {
+            throw new Error(`词汇查询 API 请求失败：HTTP ${vocabularyResponse.status}`);
+        }
+
+        const vocabularyEntries = await vocabularyResponse.json();
+        if (!Array.isArray(vocabularyEntries)) {
+            throw new Error("词汇查询 API 返回了无效的数据格式。");
+        }
+        if (vocabularyEntries.length > 0) {
+            publishCachedVocabulary(userInput, vocabularyEntries[0].explanation);
+            return;
+        }
+    } catch (error) {
+        console.error("查询词汇 API 失败:", error);
+        return;
+    }
+
     const apiKey = await getStoredApiKey();
     if (!apiKey) {
         console.error("未设置 DeepSeek API Key，请先在插件选项页配置。");
         return;
     }
     try {
-        const isSingleWord = !userInput.trim().includes(' ') && userInput.trim().length < 30;
+        const isSingleWord = !userInput.trim().includes(' ') && userInput.trim().length < 20;
 
         let systemPrompt = "";
         if (isSingleWord) {
@@ -103,8 +157,27 @@ e.g. [英文例句] - [中文翻译]`;
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`DeepSeek 请求失败：HTTP ${response.status}`);
+        }
         const data = await response.json();
         const rawText = data.choices[0].message.content;
+        if (typeof rawText !== "string" || !rawText.trim()) {
+            throw new Error("DeepSeek 返回了空的或无效的结果。");
+        }
+
+        const saveResponse = await fetch("http://127.0.0.1:8000/vocabulary", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                user_name: "jonas_wang",
+                vocabulary: userInput,
+                explanation: rawText
+            })
+        });
+        if (!saveResponse.ok) {
+            throw new Error(`保存词汇结果失败：HTTP ${saveResponse.status}`);
+        }
 
         let translation = "暂无翻译";
         let phonetic = "";
